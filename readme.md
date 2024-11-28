@@ -84,95 +84,18 @@ MsgBox "转换完成！RTF 文件已保存在：" & vbCrLf & rtfFolder, vbInform
 ```
 
 ```vbscript
-' *********************************************************************
-' This VBS script converts all .doc and .docx files in the current
-' directory to .rtf files using WordPad.
-' The converted files are saved in a subfolder named "RTF".
-' To use, place the script in the "SendTo" folder for the right-click menu.
-' *********************************************************************
-
-Option Explicit
-
-Dim objFSO, objShell, objArgs, currentFolder, rtfFolder, file, fileExtension
-Dim wordPadPath, rtfFilePath, command
-
-' Initialize FileSystemObject and Shell
-Set objFSO = CreateObject("Scripting.FileSystemObject")
-Set objShell = CreateObject("WScript.Shell")
-
-' Get the arguments passed to the script (the folder or file that was sent to the script)
-Set objArgs = WScript.Arguments
-
-' Ensure that a folder was sent to the script
-If objArgs.Count = 0 Then
-    MsgBox "Please use the 'SendTo' context menu to run this script.", vbExclamation, "No Input"
-    WScript.Quit
-End If
-
-' Get the first argument (the folder or file sent to the script)
-currentFolder = objArgs(0)
-
-' Ensure the argument is a folder
-If Not objFSO.FolderExists(currentFolder) Then
-    MsgBox "The selected item is not a folder.", vbExclamation, "Invalid Input"
-    WScript.Quit
-End If
-
-' Create the RTF folder inside the current directory
-rtfFolder = objFSO.BuildPath(currentFolder, "RTF")
-If Not objFSO.FolderExists(rtfFolder) Then
-    objFSO.CreateFolder(rtfFolder)
-End If
-
-' Define the path to WordPad (usually located at this path)
-wordPadPath = objShell.ExpandEnvironmentStrings("%ProgramFiles%\Windows NT\Accessories\wordpad.exe")
-
-' Check if WordPad exists
-If Not objFSO.FileExists(wordPadPath) Then
-    MsgBox "WordPad is not found on this system.", vbCritical, "Error"
-    WScript.Quit
-End If
-
-' Process each file in the folder
-For Each file In objFSO.GetFolder(currentFolder).Files
-    ' Get the file extension
-    fileExtension = LCase(objFSO.GetExtensionName(file.Name))
-    
-    ' Check if the file is a .doc or .docx file
-    If fileExtension = "doc" Or fileExtension = "docx" Then
-        ' Define the output RTF file path
-        rtfFilePath = objFSO.BuildPath(rtfFolder, objFSO.GetBaseName(file.Name) & ".rtf")
-        
-        ' Construct the command to convert the file using WordPad
-        ' /p ensures that WordPad opens the file and /s saves it in RTF format
-        command = """" & wordPadPath & """ """ & file.Path & """ /p /s /o:""" & rtfFilePath & """"
-        
-        ' Run the command
-        objShell.Run command, 0, True
-    End If
-Next
-
-' Notify the user of completion
-MsgBox "Conversion completed. RTF files are saved in the 'RTF' folder.", vbInformation, "Done"
-
-' Clean up
-Set objFSO = Nothing
-Set objShell = Nothing
-Set objArgs = Nothing
-```
-```vbscript
-' Convert Word Documents to RTF using WordPad
-' Purpose: Open .doc and .docx files in Word, copy content to WordPad, and save as RTF
+' Convert Word Documents to RTF 
+' Purpose: Open .doc and .docx files in Word, copy content, save as RTF using WordPad
 ' Language: VBScript
 ' Compatible with: Windows
 
 Option Explicit
 
 ' Declare variables
-Dim fso, wordApp, wordPadApp, wshShell
+Dim fso, wordApp, wshShell
 Dim sourceFolder, rtfFolder
 Dim file, sourceFile, rtfFile
-Dim wordDoc, wordPadDoc
+Dim wordDoc
 
 ' Create File System Object and Windows Shell
 Set fso = CreateObject("Scripting.FileSystemObject")
@@ -191,9 +114,6 @@ End If
 Set wordApp = CreateObject("Word.Application")
 wordApp.Visible = False
 
-' Create WordPad Application object
-Set wordPadApp = CreateObject("WordPad.Application")
-
 ' Iterate through .doc and .docx files
 For Each file In fso.GetFolder(sourceFolder).Files
     sourceFile = file.Path
@@ -208,31 +128,41 @@ For Each file In fso.GetFolder(sourceFolder).Files
         ' Open document in Word
         Set wordDoc = wordApp.Documents.Open(sourceFile)
         
-        ' Copy all content
+        ' Copy all content to clipboard
         wordDoc.Content.Copy
         
-        ' Open new WordPad document
-        Set wordPadDoc = wordPadApp.Documents.Add
-        
-        ' Paste content
-        wordPadDoc.Content.Paste
-        
-        ' Save as RTF
-        wordPadDoc.SaveAs rtfFile, 1 ' 1 represents RTF format
-        
-        ' Close documents
-        wordPadDoc.Close
+        ' Close Word document
         wordDoc.Close False
+        
+        ' Open WordPad and wait a moment
+        wshShell.Run "write.exe", 1, False
+        WScript.Sleep 1000
+        
+        ' Paste content into WordPad
+        wshShell.SendKeys "^v"
+        WScript.Sleep 500
+        
+        ' Save file
+        wshShell.SendKeys "^s"
+        WScript.Sleep 500
+        
+        ' Type the RTF filename
+        wshShell.SendKeys rtfFile
+        WScript.Sleep 500
+        
+        ' Confirm save
+        wshShell.SendKeys "{ENTER}"
+        WScript.Sleep 500
+        
+        ' Close WordPad
+        wshShell.SendKeys "%{F4}"
     End If
 Next
 
 ' Clean up
 wordApp.Quit
-wordPadApp.Quit
-Set wordPadDoc = Nothing
 Set wordDoc = Nothing
 Set wordApp = Nothing
-Set wordPadApp = Nothing
 Set fso = Nothing
 Set wshShell = Nothing
 
