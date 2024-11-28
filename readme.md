@@ -227,3 +227,68 @@ Set objFSO = Nothing
 
 MsgBox "转换完成！RTF 文件已保存在：" & vbCrLf & rtfFolder, vbInformation, "完成"
 ```
+
+```vbscript
+' 设置包含.doc和.docx文件的目录路径
+strSourceDir = WScript.Arguments(0)
+
+' 创建Word和WordPad对象
+Set objWord = CreateObject("Word.Application")
+Set objWordPad = CreateObject("WordPad.Document")
+
+' 设置Word和WordPad为可见
+objWord.Visible = True
+objWordPad.Visible = True
+
+' 获取所有.doc和.docx文件
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set objFolder = objFSO.GetFolder(strSourceDir)
+Set colFiles = objFolder.Files
+
+' 创建RTF目录
+strRtfDir = strSourceDir & "\RTF"
+If Not objFSO.FolderExists(strRtfDir) Then
+    objFSO.CreateFolder(strRtfDir)
+End If
+
+' 遍历文件
+For Each objFile in colFiles
+    strFileName = objFile.Name
+    ' 检查文件扩展名
+    If LCase(objFSO.GetExtensionName(strFileName)) = "doc" Or LCase(objFSO.GetExtensionName(strFileName)) = "docx" Then
+        ' 打开Word文档
+        Set objDoc = objWord.Documents.Open(objFile.Path)
+        
+        ' 复制内容
+        objDoc.Content.Copy
+        
+        ' 在WordPad中粘贴内容
+        objWordPad.Range.Paste
+        
+        ' 设置RTF文件名和路径
+        strRtfFileName = strRtfDir & "\" & objFSO.GetBaseName(strFileName) & ".rtf"
+        
+        ' 保存为RTF文件
+        objWordPad.SaveAs strRtfFileName, 2 ' 2代表RTF格式
+        
+        ' 清除WordPad内容
+        objWordPad.Range.Delete
+        
+        ' 关闭Word文档
+        objDoc.Close
+    End If
+Next
+
+' 关闭WordPad和Word
+objWordPad.Close
+objWord.Quit
+
+' 清理对象
+Set objWordPad = Nothing
+Set objDoc = Nothing
+Set objWord = Nothing
+Set objFSO = Nothing
+Set objFolder = Nothing
+Set colFiles = Nothing
+
+```
