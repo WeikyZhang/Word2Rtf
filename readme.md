@@ -169,3 +169,61 @@ Set wshShell = Nothing
 ' Show completion message
 MsgBox "Conversion complete. RTF files saved in " & rtfFolder, 64, "Conversion Successful"
 ```
+
+```vbscript
+' 脚本：将当前目录中的 .doc 和 .docx 文件转换为 .rtf 文件
+' 使用方法：将脚本放入 SendTo 文件夹，通过右键菜单调用
+
+Dim objArgs, objWord, objFSO, sourceFolder, rtfFolder, file, destFile
+
+' 获取传入的文件夹路径
+Set objArgs = WScript.Arguments
+If objArgs.Count = 0 Then
+    MsgBox "请通过右键菜单发送文件夹到此脚本。", vbExclamation, "错误"
+    WScript.Quit
+End If
+
+sourceFolder = objArgs(0)
+
+' 检查目标路径是否为文件夹
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+If Not objFSO.FolderExists(sourceFolder) Then
+    MsgBox "指定的路径不是文件夹：" & vbCrLf & sourceFolder, vbExclamation, "错误"
+    WScript.Quit
+End If
+
+' 创建 RTF 文件夹
+rtfFolder = objFSO.BuildPath(sourceFolder, "RTF")
+If Not objFSO.FolderExists(rtfFolder) Then
+    objFSO.CreateFolder rtfFolder
+End If
+
+' 启动 Word 应用程序
+Set objWord = CreateObject("Word.Application")
+objWord.Visible = False
+
+' 转换 .doc 和 .docx 文件
+For Each file In objFSO.GetFolder(sourceFolder).Files
+    If LCase(objFSO.GetExtensionName(file.Name)) = "doc" Or LCase(objFSO.GetExtensionName(file.Name)) = "docx" Then
+        destFile = objFSO.BuildPath(rtfFolder, objFSO.GetBaseName(file.Name) & ".rtf")
+        On Error Resume Next
+        ' 打开 Word 文件
+        Set objDoc = objWord.Documents.Open(file.Path)
+        If Err.Number = 0 Then
+            ' 保存为 RTF 格式
+            objDoc.SaveAs2 destFile, 6 ' 6 = wdFormatRTF
+            objDoc.Close False
+        Else
+            MsgBox "无法打开文件：" & vbCrLf & file.Path, vbExclamation, "错误"
+        End If
+        On Error GoTo 0
+    End If
+Next
+
+' 清理
+objWord.Quit
+Set objWord = Nothing
+Set objFSO = Nothing
+
+MsgBox "转换完成！RTF 文件已保存在：" & vbCrLf & rtfFolder, vbInformation, "完成"
+```
