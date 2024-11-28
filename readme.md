@@ -160,3 +160,82 @@ Set objFSO = Nothing
 Set objShell = Nothing
 Set objArgs = Nothing
 ```
+```vbscript
+' Convert Word Documents to RTF using WordPad
+' Purpose: Open .doc and .docx files in Word, copy content to WordPad, and save as RTF
+' Language: VBScript
+' Compatible with: Windows
+
+Option Explicit
+
+' Declare variables
+Dim fso, wordApp, wordPadApp, wshShell
+Dim sourceFolder, rtfFolder
+Dim file, sourceFile, rtfFile
+Dim wordDoc, wordPadDoc
+
+' Create File System Object and Windows Shell
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set wshShell = CreateObject("WScript.Shell")
+
+' Get the current directory
+sourceFolder = fso.GetParentFolderName(WScript.ScriptFullName)
+
+' Create RTF subdirectory if it doesn't exist
+rtfFolder = fso.BuildPath(sourceFolder, "RTF")
+If Not fso.FolderExists(rtfFolder) Then
+    fso.CreateFolder(rtfFolder)
+End If
+
+' Create Word Application object
+Set wordApp = CreateObject("Word.Application")
+wordApp.Visible = False
+
+' Create WordPad Application object
+Set wordPadApp = CreateObject("WordPad.Application")
+
+' Iterate through .doc and .docx files
+For Each file In fso.GetFolder(sourceFolder).Files
+    sourceFile = file.Path
+    
+    ' Check if file is a Word document
+    If LCase(fso.GetExtensionName(sourceFile)) = "doc" Or _
+       LCase(fso.GetExtensionName(sourceFile)) = "docx" Then
+        
+        ' Construct RTF filename
+        rtfFile = fso.BuildPath(rtfFolder, fso.GetBaseName(sourceFile) & ".rtf")
+        
+        ' Open document in Word
+        Set wordDoc = wordApp.Documents.Open(sourceFile)
+        
+        ' Copy all content
+        wordDoc.Content.Copy
+        
+        ' Open new WordPad document
+        Set wordPadDoc = wordPadApp.Documents.Add
+        
+        ' Paste content
+        wordPadDoc.Content.Paste
+        
+        ' Save as RTF
+        wordPadDoc.SaveAs rtfFile, 1 ' 1 represents RTF format
+        
+        ' Close documents
+        wordPadDoc.Close
+        wordDoc.Close False
+    End If
+Next
+
+' Clean up
+wordApp.Quit
+wordPadApp.Quit
+Set wordPadDoc = Nothing
+Set wordDoc = Nothing
+Set wordApp = Nothing
+Set wordPadApp = Nothing
+Set fso = Nothing
+Set wshShell = Nothing
+
+' Show completion message
+MsgBox "Conversion complete. RTF files saved in " & rtfFolder, 64, "Conversion Successful"
+```
