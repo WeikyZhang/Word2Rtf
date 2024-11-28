@@ -84,198 +84,79 @@ MsgBox "转换完成！RTF 文件已保存在：" & vbCrLf & rtfFolder, vbInform
 ```
 
 ```vbscript
-'==========================================================================
-' This script converts all .doc and .docx files in the current directory 
-' into .rtf files using Microsoft Word and saves them in a subdirectory 
-' named "RTF".
-' Place this script in the "SendTo" folder for quick access from the 
-' right-click context menu.
-'==========================================================================
+' *********************************************************************
+' This VBS script converts all .doc and .docx files in the current
+' directory to .rtf files using WordPad.
+' The converted files are saved in a subfolder named "RTF".
+' To use, place the script in the "SendTo" folder for the right-click menu.
+' *********************************************************************
 
-Dim objArgs, objFSO, objWord, inputFolder, outputFolder, inputFile, outputFile, files
-Dim folderPath, fileExtension
+Option Explicit
 
-' Get the command-line arguments (the selected file/folder sent to the script)
+Dim objFSO, objShell, objArgs, currentFolder, rtfFolder, file, fileExtension
+Dim wordPadPath, rtfFilePath, command
+
+' Initialize FileSystemObject and Shell
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set objShell = CreateObject("WScript.Shell")
+
+' Get the arguments passed to the script (the folder or file that was sent to the script)
 Set objArgs = WScript.Arguments
 
-' Ensure a file/folder was passed in
+' Ensure that a folder was sent to the script
 If objArgs.Count = 0 Then
-    MsgBox "Please select a file or folder and use 'Send To' to run this script.", vbExclamation, "Error"
+    MsgBox "Please use the 'SendTo' context menu to run this script.", vbExclamation, "No Input"
     WScript.Quit
 End If
 
-' Get the path of the selected file/folder
-folderPath = objArgs(0)
+' Get the first argument (the folder or file sent to the script)
+currentFolder = objArgs(0)
 
-' Create a FileSystemObject to handle file and folder operations
-Set objFSO = CreateObject("Scripting.FileSystemObject")
-
-' If the selected item is a file, get its parent directory
-If objFSO.FileExists(folderPath) Then
-    folderPath = objFSO.GetParentFolderName(folderPath)
-End If
-
-' Ensure the folder exists
-If Not objFSO.FolderExists(folderPath) Then
-    MsgBox "The selected folder does not exist.", vbExclamation, "Error"
+' Ensure the argument is a folder
+If Not objFSO.FolderExists(currentFolder) Then
+    MsgBox "The selected item is not a folder.", vbExclamation, "Invalid Input"
     WScript.Quit
 End If
 
-' Create the output folder named "RTF" in the current directory
-outputFolder = objFSO.BuildPath(folderPath, "RTF")
-If Not objFSO.FolderExists(outputFolder) Then
-    objFSO.CreateFolder(outputFolder)
+' Create the RTF folder inside the current directory
+rtfFolder = objFSO.BuildPath(currentFolder, "RTF")
+If Not objFSO.FolderExists(rtfFolder) Then
+    objFSO.CreateFolder(rtfFolder)
 End If
 
-' Initialize Microsoft Word application
-On Error Resume Next
-Set objWord = CreateObject("Word.Application")
-If Err.Number <> 0 Then
-    MsgBox "Microsoft Word is not installed on this system.", vbExclamation, "Error"
+' Define the path to WordPad (usually located at this path)
+wordPadPath = objShell.ExpandEnvironmentStrings("%ProgramFiles%\Windows NT\Accessories\wordpad.exe")
+
+' Check if WordPad exists
+If Not objFSO.FileExists(wordPadPath) Then
+    MsgBox "WordPad is not found on this system.", vbCritical, "Error"
     WScript.Quit
 End If
-On Error GoTo 0
 
-' Process all .doc and .docx files in the selected directory
-Set files = objFSO.GetFolder(folderPath).Files
-
-For Each inputFile In files
-    fileExtension = LCase(objFSO.GetExtensionName(inputFile.Name))
+' Process each file in the folder
+For Each file In objFSO.GetFolder(currentFolder).Files
+    ' Get the file extension
+    fileExtension = LCase(objFSO.GetExtensionName(file.Name))
     
-    ' Check if the file is .doc or .docx
+    ' Check if the file is a .doc or .docx file
     If fileExtension = "doc" Or fileExtension = "docx" Then
-        ' Construct the output file path
-        outputFile = objFSO.BuildPath(outputFolder, objFSO.GetBaseName(inputFile.Name) & ".rtf")
+        ' Define the output RTF file path
+        rtfFilePath = objFSO.BuildPath(rtfFolder, objFSO.GetBaseName(file.Name) & ".rtf")
         
-        ' Open the file in Word
-        On Error Resume Next
-        Set doc = objWord.Documents.Open(inputFile.Path, False, True) ' Open in read-only mode
-        If Err.Number <> 0 Then
-            MsgBox "Failed to open file: " & inputFile.Path, vbExclamation, "Error"
-            Err.Clear
-            On Error GoTo 0
-            Continue For
-        End If
-        On Error GoTo 0
-
-        ' Save the document as RTF
-        On Error Resume Next
-        doc.SaveAs2 outputFile, 6 ' 6 corresponds to the RTF format
-        If Err.Number <> 0 Then
-            MsgBox "Failed to save file: " & outputFile, vbExclamation, "Error"
-            Err.Clear
-        End If
-        doc.Close False ' Close the document without saving changes
-        On Error GoTo 0
+        ' Construct the command to convert the file using WordPad
+        ' /p ensures that WordPad opens the file and /s saves it in RTF format
+        command = """" & wordPadPath & """ """ & file.Path & """ /p /s /o:""" & rtfFilePath & """"
+        
+        ' Run the command
+        objShell.Run command, 0, True
     End If
 Next
 
-' Quit Word application
-objWord.Quit
-Set objWord = Nothing
-
-' Notify the user
-MsgBox "Conversion completed. RTF files are saved in: " & outputFolder, vbInformation, "Done"
+' Notify the user of completion
+MsgBox "Conversion completed. RTF files are saved in the 'RTF' folder.", vbInformation, "Done"
 
 ' Clean up
 Set objFSO = Nothing
-Set objArgs = Nothing
-```
-
-```vbscript
-
-'==========================================================================
-' This script converts all .doc and .docx files in the current directory 
-' into .rtf files using Microsoft Word and saves them in a subdirectory 
-' named "RTF".
-' Place this script in the "SendTo" folder for quick access from the 
-' right-click context menu.
-'==========================================================================
-
-Dim objArgs, objFSO, objWord, inputFolder, outputFolder, inputFile, outputFile, files
-Dim folderPath, fileExtension
-
-' Get the command-line arguments (the selected file/folder sent to the script)
-Set objArgs = WScript.Arguments
-
-' Ensure a file/folder was passed in
-If objArgs.Count = 0 Then
-    MsgBox "Please select a file or folder and use 'Send To' to run this script.", vbExclamation, "Error"
-    WScript.Quit
-End If
-
-' Get the path of the selected file/folder
-folderPath = objArgs(0)
-
-' Create a FileSystemObject to handle file and folder operations
-Set objFSO = CreateObject("Scripting.FileSystemObject")
-
-' If the selected item is a file, get its parent directory
-If objFSO.FileExists(folderPath) Then
-    folderPath = objFSO.GetParentFolderName(folderPath)
-End If
-
-' Ensure the folder exists
-If Not objFSO.FolderExists(folderPath) Then
-    MsgBox "The selected folder does not exist.", vbExclamation, "Error"
-    WScript.Quit
-End If
-
-' Create the output folder named "RTF" in the current directory
-outputFolder = objFSO.BuildPath(folderPath, "RTF")
-If Not objFSO.FolderExists(outputFolder) Then
-    objFSO.CreateFolder(outputFolder)
-End If
-
-' Initialize Microsoft Word application
-On Error Resume Next
-Set objWord = CreateObject("Word.Application")
-If Err.Number <> 0 Then
-    MsgBox "Microsoft Word is not installed on this system.", vbExclamation, "Error"
-    WScript.Quit
-End If
-On Error GoTo 0
-
-' Process all .doc and .docx files in the selected directory
-Set files = objFSO.GetFolder(folderPath).Files
-
-For Each inputFile In files
-    fileExtension = LCase(objFSO.GetExtensionName(inputFile.Name))
-    
-    ' Check if the file is .doc or .docx
-    If fileExtension = "doc" Or fileExtension = "docx" Then
-        ' Construct the output file path
-        outputFile = objFSO.BuildPath(outputFolder, objFSO.GetBaseName(inputFile.Name) & ".rtf")
-        
-        ' Open the file in Word
-        On Error Resume Next
-        Set doc = objWord.Documents.Open(inputFile.Path, False, True) ' Open in read-only mode
-        If Err.Number <> 0 Then
-            ' Failed to open the file, skip to the next file
-            Err.Clear
-            On Error GoTo 0
-            ContinueLoop:
-        Else
-            ' Save the document as RTF
-            doc.SaveAs2 outputFile, 6 ' 6 corresponds to the RTF format
-            If Err.Number <> 0 Then
-                ' Failed to save the file, skip to the next file
-                Err.Clear
-            End If
-            doc.Close False ' Close the document without saving changes
-        End If
-        On Error GoTo 0
-    End If
-Next
-
-' Quit Word application
-objWord.Quit
-Set objWord = Nothing
-
-' Notify the user
-MsgBox "Conversion completed. RTF files are saved in: " & outputFolder, vbInformation, "Done"
-
-' Clean up
-Set objFSO = Nothing
+Set objShell = Nothing
 Set objArgs = Nothing
 ```
