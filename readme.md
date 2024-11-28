@@ -1,3 +1,4 @@
+```vbScript
 ' 脚本：将当前目录中的 .doc 和 .docx 文件用 Word 打开并用 WordPad 保存为 .rtf 文件
 ' 转换结果保存到当前目录的 RTF 文件夹中
 
@@ -79,3 +80,5 @@ Set objFSO = Nothing
 Set objShell = Nothing
 
 MsgBox "转换完成！RTF 文件已保存在：" & vbCrLf & rtfFolder, vbInformation, "完成"
+
+```
