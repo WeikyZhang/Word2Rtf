@@ -292,3 +292,90 @@ Set objFolder = Nothing
 Set colFiles = Nothing
 
 ```
+```vbscript
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set objShell = CreateObject("WScript.Shell")
+
+' 获取传递的文件夹路径
+If WScript.Arguments.Count = 0 Then
+    WScript.Echo "请通过右键菜单的“发送到”选项运行此脚本。"
+    WScript.Quit
+End If
+
+folderPath = WScript.Arguments(0)
+
+' 检查传递的路径是否为文件夹
+If Not objFSO.FolderExists(folderPath) Then
+    WScript.Echo "传递的路径无效，请确认选择的是文件夹。"
+    WScript.Quit
+End If
+
+' 创建 RTF 目录
+Set folder = objFSO.GetFolder(folderPath)
+rtfFolderPath = objFSO.BuildPath(folderPath, "RTF")
+If Not objFSO.FolderExists(rtfFolderPath) Then
+    objFSO.CreateFolder rtfFolderPath
+End If
+
+' 初始化 Word 应用程序
+On Error Resume Next
+Set wordApp = CreateObject("Word.Application")
+If Err.Number <> 0 Then
+    WScript.Echo "无法启动 Word 应用程序，请确保已安装 Microsoft Word。"
+    WScript.Quit
+End If
+On Error GoTo 0
+
+wordApp.Visible = False ' 后台运行 Word
+
+' 遍历文件夹中的 .doc 和 .docx 文件
+For Each file In folder.Files
+    If LCase(objFSO.GetExtensionName(file.Name)) = "doc" Or LCase(objFSO.GetExtensionName(file.Name)) = "docx" Then
+        docFilePath = file.Path
+        rtfFileName = objFSO.GetBaseName(file.Name) & ".rtf"
+        rtfFilePath = objFSO.BuildPath(rtfFolderPath, rtfFileName)
+
+        ' 打开 Word 文档
+        On Error Resume Next
+        Set doc = wordApp.Documents.Open(docFilePath, False, True) ' 打开为只读模式
+        If Err.Number <> 0 Then
+            WScript.Echo "无法打开文件：" & docFilePath
+            Err.Clear
+            On Error GoTo 0
+            Continue For
+        End If
+        On Error GoTo 0
+
+        ' 复制内容到剪贴板
+        doc.Content.Copy
+        doc.Close False
+
+        ' 打开 WordPad 并粘贴内容
+        On Error Resume Next
+        objShell.Run "write.exe", 1, False ' 启动 WordPad
+        WScript.Sleep 1000 ' 等待 WordPad 启动
+
+        objShell.SendKeys "^v" ' 粘贴内容
+        WScript.Sleep 500
+
+        ' 保存为 RTF 文件
+        objShell.SendKeys "^s" ' 保存文件
+        WScript.Sleep 500
+        objShell.SendKeys rtfFilePath & "{ENTER}" ' 输入文件路径并保存
+        WScript.Sleep 1000
+
+        objShell.SendKeys "%{F4}" ' 关闭 WordPad
+        WScript.Sleep 500
+        On Error GoTo 0
+
+        WScript.Echo "已转换文件：" & rtfFileName
+    End If
+Next
+
+' 关闭 Word 应用程序
+wordApp.Quit
+Set wordApp = Nothing
+
+WScript.Echo "转换完成！RTF 文件已保存到 " & rtfFolderPath
+
+```
